@@ -9,7 +9,14 @@ export interface Cat {
   dailyKcal: number | null;
   /** Identity colour used throughout the UI. */
   color: string;
+  /**
+   * Whether the cat grazes on food left down or finishes it in one go. Only the
+   * gap and wet-food checks use it. null = not said yet, treated as grazing.
+   */
+  eats: EatingStyle | null;
 }
+
+export type EatingStyle = 'grazes' | 'meals';
 
 export interface Food {
   id: string;
@@ -50,12 +57,6 @@ export type FillTime =
   | { kind: 'at'; at: string }
   | { kind: 'window'; from: string; to: string };
 
-/** How long a manual fill stays down. */
-export type Graze =
-  | { kind: 'none' } // eaten when put down
-  | { kind: 'until'; until: string } // left down until a time
-  | { kind: 'open' }; // left down; no set end
-
 /** One food in a fill. */
 export interface FillItem {
   foodId: string | null;
@@ -71,8 +72,11 @@ export interface Fill {
   // Manual fills only. Auto dispenses take food and amount from the feeder.
   /** What's put down together, e.g. wet and dry in the same bowl. One feeding however many foods. */
   items: FillItem[];
-  /** Applies to everything in the fill. */
-  graze: Graze;
+  /**
+   * Food stays down until it's eaten. Set this if someone picks up what's left at a
+   * given time. Applies to everything in the fill. Set-time fills only.
+   */
+  pickUpAt: string | null;
   note: string;
 }
 
@@ -83,7 +87,7 @@ export interface Plan {
   fills: Fill[];
 }
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface AppData {
   schemaVersion: typeof SCHEMA_VERSION;

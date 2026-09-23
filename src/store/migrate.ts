@@ -17,6 +17,20 @@ const migrations: Record<number, (d: any) => any> = {
       })),
     })),
   }),
+  // v3: no "eaten now" option; a fill is left down unless picked up at a set time.
+  // Cats say whether they graze or eat in one go.
+  2: (d) => ({
+    ...d,
+    schemaVersion: 3,
+    cats: !Array.isArray(d.cats) ? d.cats : d.cats.map((c: any) => ({ ...c, eats: c.eats ?? null })),
+    plans: !Array.isArray(d.plans) ? d.plans : d.plans.map((p: any) => ({
+      ...p,
+      fills: p.fills.map(({ graze, ...f }: any) => ({
+        ...f,
+        pickUpAt: graze?.kind === 'until' && f.time?.kind === 'at' ? graze.until : null,
+      })),
+    })),
+  }),
 };
 
 export class ImportError extends Error {}

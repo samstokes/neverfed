@@ -26,8 +26,9 @@ The full design spec is in [`docs/spec.md`](docs/spec.md).
 
 - **A fill is the unit, not a time slot.** A fill is what goes into one feeder at one
   time: one food, or several put down together (e.g. wet and dry). It counts as one
-  feeding. If it's left down to graze, that changes the gap and wet-food checks, but its
-  calories are still counted once.
+  feeding. Food stays down until it's eaten, unless the fill says someone picks up what's
+  left at a set time.
+- **Each cat grazes or eats in one go.** This only affects the gap and wet-food checks.
 - **Fill timing** is either a set time (your own feedings, auto dispenses) or a
   **visit window** for a sitter who comes whenever they can ("any time", or e.g. 09:00–18:00).
   The checks assume the worst case over the window.
@@ -42,9 +43,10 @@ The full design spec is in [`docs/spec.md`](docs/spec.md).
 Checks shown on each plan:
 
 - Feedings per cat per day.
-- Longest gap without food, including overnight. Grazing time counts as fed, and an
-  open-ended graze lasts until that feeder's next fill.
-- Wet food left down more than 4 hours.
+- Longest gap without food, including overnight. For a grazer, food in its own feeder
+  counts as available until it's picked up or the feeder's next fill. For a cat that eats
+  in one go, and for shared feeders, each fill counts as a single moment.
+- Wet food left down more than 4 hours where a grazing cat can get at it.
 - Hopper runway: how many days a full hopper lasts.
 - Food needed for a trip.
 

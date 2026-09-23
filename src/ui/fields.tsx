@@ -127,7 +127,8 @@ export function AmountField(props: { form: FoodForm; value: number | null; onCha
 }
 
 export function Segmented<T extends string>(props: {
-  value: T;
+  /** null: nothing selected yet. */
+  value: T | null;
   options: { value: T; label: string }[];
   onChange: (v: T) => void;
   label: string;

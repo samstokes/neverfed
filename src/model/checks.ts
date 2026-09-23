@@ -1,6 +1,6 @@
 import type { ResolvedFill } from './calc';
 import { DAY, forwardDist, toMin } from './time';
-import type { AppData, Feeder, Fill, Food, Plan } from './types';
+import type { AppData, Cat, Feeder, Fill, Food, Plan } from './types';
 
 /** Wet food left down longer than this is flagged as a spoilage risk. */
 export const WET_MAX_MINUTES = 4 * 60;
@@ -31,10 +31,21 @@ interface Interval {
   len: number;
 }
 
+/** A cat that hasn't said how it eats is treated as a grazer. */
+export function grazes(cat: Cat | undefined): boolean {
+  return cat?.eats !== 'meals';
+}
+
 /**
  * Longest stretch with no food available to a cat, including the overnight
- * wrap-around. Food counts as available from when it's put down until its
- * graze window ends: an open-ended graze lasts until the feeder's next fill.
+ * wrap-around.
+ *
+ * A cat that eats in one go has food only at the moment each fill lands. A
+ * grazer keeps having food while it's left down: until it's picked up, or
+ * until that feeder's next fill. That only applies to feeders the cat has to
+ * itself; in a shared feeder the other cat may eat the rest, so those fills
+ * count as a single moment.
+ *
  * Fills with a visit window are tried at each end of their window, and the
  * worst result is reported.
  *
@@ -43,6 +54,8 @@ interface Interval {
 export function longestGap(data: AppData, plan: Plan, catId: string): Gap | null {
   const fills = fillsForCat(data, plan, catId);
   if (fills.length === 0) return null;
+  const grazer = grazes(data.cats.find((c) => c.id === catId));
+  const ownFeeder = (f: Fill) => data.feeders.find((x) => x.id === f.feederId)?.catIds.length === 1;
 
   const windowKeys = [
     ...new Set(fills.flatMap((f) => (f.time.kind === 'window' ? [`${f.time.from}-${f.time.to}`] : []))),
@@ -67,13 +80,13 @@ export function longestGap(data: AppData, plan: Plan, catId: string): Gap | null
     };
     const intervals: Interval[] = fills.map((f) => {
       const start = startOf(f);
-      let len = 0;
-      if (f.graze.kind === 'until') {
-        const d = forwardDist(start, toMin(f.graze.until));
-        len = d === DAY ? 0 : d;
-      } else if (f.graze.kind === 'open') {
-        const others = plan.fills.filter((o) => o.feederId === f.feederId && o.id !== f.id);
-        len = others.length === 0 ? DAY : Math.min(...others.map((o) => forwardDist(start, startOf(o))));
+      if (!grazer || !ownFeeder(f)) return { start, len: 0 };
+      // Left down until the feeder's next fill, or until it's picked up if that's sooner.
+      const others = plan.fills.filter((o) => o.feederId === f.feederId && o.id !== f.id);
+      let len = others.length === 0 ? DAY : Math.min(...others.map((o) => forwardDist(start, startOf(o))));
+      if (f.pickUpAt !== null && f.time.kind === 'at') {
+        const d = forwardDist(start, toMin(f.pickUpAt));
+        len = Math.min(len, d === DAY ? 0 : d);
       }
       return { start, len };
     });
@@ -106,27 +119,25 @@ export interface WetWarning {
   food: Food;
   qty: number | null;
   feeder: Feeder;
-  /** Minutes it may sit out, or null if open-ended. */
+  /** Minutes it may sit out, or null if it isn't picked up. */
   minutes: number | null;
 }
 
-/** Wet fills that may sit out longer than WET_MAX_MINUTES. */
-export function wetSittingOut(fills: ResolvedFill[]): WetWarning[] {
+/**
+ * Wet fills that may sit out longer than WET_MAX_MINUTES. Only fills a grazing
+ * cat can get at: a cat that eats in one go finishes it before it spoils.
+ */
+export function wetSittingOut(data: AppData, fills: ResolvedFill[]): WetWarning[] {
   const out: WetWarning[] = [];
   for (const rf of fills) {
-    if (!rf.feeder) continue;
-    const { graze, time } = rf.fill;
-    let minutes: number | null;
-    if (graze.kind === 'open') {
-      minutes = null;
-    } else if (graze.kind === 'until') {
-      // Worst case for a visit window: put down at the start of it.
-      const start = toMin(time.kind === 'at' ? time.at : time.from);
-      const d = forwardDist(start, toMin(graze.until));
+    if (!rf.feeder || !rf.manual) continue;
+    if (!rf.feeder.catIds.some((id) => grazes(data.cats.find((c) => c.id === id)))) continue;
+    const { pickUpAt, time } = rf.fill;
+    let minutes: number | null = null;
+    if (pickUpAt !== null && time.kind === 'at') {
+      const d = forwardDist(toMin(time.at), toMin(pickUpAt));
       if (d <= WET_MAX_MINUTES || d >= DAY) continue;
       minutes = d;
-    } else {
-      continue;
     }
     for (const item of rf.items) {
       if (item.food?.form === 'wet') {

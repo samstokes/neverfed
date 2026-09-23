@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { attributionFor } from '../model/calc';
 import { setupSteps } from '../model/setup';
-import { newId, type AppData, type Cat, type Feeder, type Food, type FoodForm } from '../model/types';
+import { newId, type AppData, type Cat, type EatingStyle, type Feeder, type Food, type FoodForm } from '../model/types';
 import { formatAmount } from '../model/units';
 import { ImportError, migrate } from '../store/migrate';
 import { NumberField, Segmented, TextField } from './fields';
@@ -90,7 +90,7 @@ function CatsSection() {
   const add = () => {
     const id = newId();
     update((d) => {
-      d.cats.push({ id, name: '', dailyKcal: null, color: CAT_COLORS[d.cats.length % CAT_COLORS.length]! });
+      d.cats.push({ id, name: '', dailyKcal: null, color: CAT_COLORS[d.cats.length % CAT_COLORS.length]!, eats: null });
     });
     setFocus(id);
   };
@@ -124,6 +124,23 @@ function CatEditor({ cat, autoFocus }: { cat: Cat; autoFocus: boolean }) {
         Daily target
         <NumberField value={cat.dailyKcal} onCommit={(dailyKcal) => set({ dailyKcal })} suffix="kcal/day" />
       </label>
+      <div class="field">
+        <span>How does {cat.name || 'this cat'} eat?</span>
+        <Segmented<EatingStyle>
+          label="Eating style"
+          value={cat.eats}
+          options={[
+            { value: 'grazes', label: 'Grazes' },
+            { value: 'meals', label: 'Eats in one go' },
+          ]}
+          onChange={(eats) => set({ eats })}
+        />
+        <p class="muted small">
+          {cat.eats === null && 'Not set, so treated as grazing. '}
+          Used for the gap check (a grazer has food while it’s left down) and the wet-food check (only
+          grazers leave wet food sitting out).
+        </p>
+      </div>
       <div class="field">
         <span>Colour</span>
         <div class="swatches">

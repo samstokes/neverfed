@@ -174,7 +174,7 @@ function NeedsSetup({ issues }: { issues: string[] }) {
 }
 
 function Checks({ data, plan, summary }: { data: AppData; plan: Plan; summary: PlanSummary }) {
-  const wet = wetSittingOut(summary.fills);
+  const wet = wetSittingOut(data, summary.fills);
   const runways = hopperRunway(data, plan);
   if (data.cats.length === 0 && runways.length === 0) return null;
 
@@ -189,7 +189,8 @@ function Checks({ data, plan, summary }: { data: AppData; plan: Plan; summary: P
           return (
             <li class={long || n === 0 ? 'warn' : ''}>
               <span class="dot" style={{ background: c.color }} />
-              <strong>{c.name}:</strong> {n} {n === 1 ? 'feeding' : 'feedings'} a day
+              <strong>{c.name}</strong>{' '}
+              <span class="muted small">({c.eats === 'meals' ? 'eats in one go' : c.eats === 'grazes' ? 'grazes' : 'assumed to graze'})</span>: {n} {n === 1 ? 'feeding' : 'feedings'} a day
               {gap === null
                 ? ''
                 : gap.minutes === 0
@@ -202,9 +203,9 @@ function Checks({ data, plan, summary }: { data: AppData; plan: Plan; summary: P
           <li class="warn">
             Wet food: {w.qty !== null ? formatAmount('wet', w.qty) : '?'} {w.food.name} in {w.feeder.name}{' '}
             {w.minutes === null
-              ? 'is left down with no pick-up time'
+              ? 'is left down until it’s eaten'
               : `sits out for ${formatDuration(w.minutes)}`}
-            . Wet food shouldn’t stay down more than {formatDuration(WET_MAX_MINUTES)}.
+            . Wet food shouldn’t stay down more than {formatDuration(WET_MAX_MINUTES)} for a cat that grazes.
           </li>
         ))}
         {runways.map((r) => (
@@ -229,14 +230,14 @@ function Timeline({ data, fills, onEdit }: { data: AppData; fills: ResolvedFill[
     <ol class="timeline">
       {sorted.map((rf) => {
         const cats = (rf.feeder?.catIds ?? []).map((id) => data.cats.find((c) => c.id === id)).filter((c) => !!c);
-        const g = rf.fill.graze;
         return (
           <li>
             <button class={`tl-row ${rf.manual ? 'manual' : 'auto'}`} onClick={() => onEdit(rf.fill)}>
               <span class="tl-time">
                 {formatFillTime(rf.fill.time)}
-                {g.kind === 'until' && <span class="tl-graze">→ {g.until}</span>}
-                {g.kind === 'open' && <span class="tl-graze">→ left down</span>}
+                {rf.fill.pickUpAt !== null && rf.fill.time.kind === 'at' && (
+                  <span class="tl-graze">up at {rf.fill.pickUpAt}</span>
+                )}
               </span>
               <span class="tl-body">
                 <span class="tl-feeder">
