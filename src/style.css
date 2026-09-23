@@ -361,6 +361,9 @@ label.row input[type='number'] {
   display: flex;
   justify-content: flex-end;
 }
+.checklist-hidden {
+  margin: 12px 0;
+}
 .checklist ol {
   list-style: none;
   padding: 0;

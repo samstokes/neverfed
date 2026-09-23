@@ -29,14 +29,54 @@ export function SetupScreen({ section }: { section?: string }) {
   );
 }
 
+const CHECKLIST_HIDDEN_KEY = 'neverfed.checklistHidden';
+
+function initialHidden(): boolean {
+  try {
+    return localStorage.getItem(CHECKLIST_HIDDEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export function Checklist({ compact }: { compact?: boolean }) {
   const { data } = useStore();
+  const [hidden, setHidden] = useState(initialHidden);
   const steps = setupSteps(data);
   const remaining = steps.filter((s) => !s.done && !s.optional);
   if (compact && remaining.length === 0) return null;
+
+  const setHiddenSaved = (h: boolean) => {
+    setHidden(h);
+    try {
+      if (h) localStorage.setItem(CHECKLIST_HIDDEN_KEY, '1');
+      else localStorage.removeItem(CHECKLIST_HIDDEN_KEY);
+    } catch {
+      // Just a convenience.
+    }
+  };
+
+  // Only hideable once the required steps are done; a new required step (e.g. adding an auto feeder) brings it back.
+  if (remaining.length === 0 && hidden) {
+    return (
+      <p class="checklist-hidden muted small">
+        Setup complete.{' '}
+        <button class="btn small" onClick={() => setHiddenSaved(false)}>
+          Show checklist
+        </button>
+      </p>
+    );
+  }
   return (
     <section class="card checklist">
-      <h2>{remaining.length ? 'Getting started' : 'Setup complete'}</h2>
+      <div class="section-head">
+        <h2>{remaining.length ? 'Getting started' : 'Setup complete'}</h2>
+        {remaining.length === 0 && (
+          <button class="btn small" onClick={() => setHiddenSaved(true)}>
+            Hide
+          </button>
+        )}
+      </div>
       <ol>
         {steps.map((s) => (
           <li class={s.done ? 'done' : ''}>
