@@ -1,4 +1,4 @@
-import { summarisePlan, type ResolvedFill } from './calc';
+import { describeItems, summarisePlan, type ResolvedFill } from './calc';
 import { foodForTrip, hopperRunway } from './checks';
 import { formatFillTime, isAllDay, startMin, timeKey } from './time';
 import type { AppData, Plan } from './types';
@@ -28,11 +28,9 @@ export function manualGroups(fills: ResolvedFill[]): SitterGroup[] {
   return [...groups.values()];
 }
 
-export function grazeInstruction(rf: ResolvedFill): string {
-  const g = rf.fill.graze;
-  if (g.kind === 'none') return 'eaten straight away; pick up what’s left';
-  if (g.kind === 'until') return `leave it down until ${g.until} to graze`;
-  return 'leave it down to graze';
+export function pickUpInstruction(rf: ResolvedFill): string {
+  const at = rf.fill.pickUpAt;
+  return at !== null && rf.fill.time.kind === 'at' ? `pick up what’s left at ${at}` : 'leave it down';
 }
 
 function catNames(data: AppData, ids: string[]): string {
@@ -83,9 +81,7 @@ export function sitterText(data: AppData, plan: Plan, daysAway: number): string 
     for (const rf of g.fills) {
       const feederName = rf.feeder?.name ?? '?';
       const who = rf.feeder ? catNames(data, rf.feeder.catIds) : '?';
-      const amount = rf.food && rf.qty !== null ? formatAmount(rf.food.form, rf.qty) : '? amount';
-      const food = rf.food?.name ?? '? food';
-      lines.push(`  • ${feederName} (${who}): ${amount} ${food}, ${grazeInstruction(rf)}`);
+      lines.push(`  • ${feederName} (${who}): ${describeItems(rf.items)}, ${pickUpInstruction(rf)}`);
       if (rf.fill.note.trim()) lines.push(`    ${rf.fill.note.trim()}`);
     }
   }

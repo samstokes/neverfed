@@ -21,6 +21,13 @@ export function setupSteps(data: AppData): SetupStep[] {
       label: 'Enter each cat’s daily kcal target',
       done: data.cats.length > 0 && data.cats.every((c) => c.dailyKcal !== null),
     },
+    {
+      id: 'eats',
+      section: 'cats',
+      label: 'Say whether each cat grazes or eats in one go',
+      done: data.cats.length > 0 && data.cats.every((c) => c.eats !== null),
+      optional: true,
+    },
     { id: 'foods', section: 'foods', label: 'Add the foods you feed', done: data.foods.length > 0 },
     {
       id: 'density',

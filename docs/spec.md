@@ -31,9 +31,10 @@ manual feedings.
 In the spreadsheet, a morning portion that one cat grazes on all day is a single merged
 cell spanning several rows: one portion put down in the morning, not several feedings.
 Treating rows as slots would count that portion several times. So the basic unit is a
-**fill**: an amount of one food put into one feeder at one time. A fill can optionally be
-left down to graze. That changes the schedule display and the gap and wet-food checks,
-but never the calorie count.
+**fill**: what's put into one feeder at one time. **(revised)** That can be one food or
+several put down together, such as wet and dry in the same bowl, and it counts as one
+feeding either way. Whether it's grazed or eaten in one go, and whether anyone picks up
+what's left, changes the gap and wet-food checks, but never the calorie count.
 
 **2. Food is a first-class record with a calorie density.**
 A footnote like "amounts assume food A, multiply by 1.5 for food B" is a calorie conversion
@@ -55,7 +56,9 @@ plan with fewer, larger manual fills.
 Cat {
   id, name,
   dailyKcal: number | null,   // target; null until entered
-  color                       // identity colour used throughout the UI
+  color,                      // identity colour used throughout the UI
+  eats: 'grazes' | 'meals' | null  // (revised) grazes, or eats in one go; null = not said,
+                                   // treated as grazing
 }
 
 Food {
@@ -89,11 +92,10 @@ Fill {                                                        // (revised)
       | { kind: 'window', from: 'HH:MM', to: 'HH:MM' },       // a sitter visit window
 
   // manual fills only:
-  foodId,
-  qty,                        // in the food's unit: cups or cans
-  graze: { kind: 'none' }                      // eaten when put down
-       | { kind: 'until', until: 'HH:MM' }     // left down until a time
-       | { kind: 'open' },                     // left down with no end time
+  items: { foodId, qty }[],   // (revised) one or more foods put down together;
+                              // qty in the food's unit: cups or cans
+  pickUpAt: 'HH:MM' | null,   // (revised) when someone picks up what's left; null = it
+                              // stays down until eaten. Whole fill; set-time fills only
   note
 }
 
@@ -104,8 +106,12 @@ AppData { schemaVersion, cats, foods, feeders, plans }
 can within a broad window. So a fill happens either **at a set time** (your own feedings,
 and every auto dispense) or **in a visit window**, which defaults to any time of day
 (`00:00`–`24:00`). The checks assume the worst case over the window (§4). A windowed fill
-can be eaten straight away or left down, but can't be left down until a set time, because
-the time it goes down isn't known.
+can't have a pick-up time, because the time it goes down isn't known.
+
+**Eating style and pick-up (revised).** You can't control when a cat finishes eating, only
+whether someone takes the food away. So a fill records only an optional pick-up time, and
+each cat records whether it grazes or eats in one go. Together these say how long food is
+really available, which is what the gap and wet-food checks need.
 
 **Why auto dispenses have no food or amount.** A programmable feeder has one hopper and one
 portion setting; what you program is the *times*. So an auto fill is `{feederId, time}`,
@@ -123,7 +129,7 @@ spreadsheet: a scoop is ¼ cup, so ½ cup shows as "½ cup · 2 scoops" and ⅛ 
 ## 3. Calorie calculation
 
 ```
-fill_kcal   = qty × food.kcalPerUnit
+fill_kcal   = Σ over items of qty × food.kcalPerUnit   // (revised) unknown if any item's is
 attribution = feeder.catIds.length === 1
                 ? { [thatCat]: 1 }
                 : normalise(feeder.share)      // weights, default even
@@ -155,12 +161,15 @@ Beyond the calorie total, each plan shows:
   both manual fills and the auto dispenses that cat can get at.
 - **Longest gap** without food, including the overnight wrap-around. A plan that hits the
   calorie target with two feedings 14 hours apart should say so.
-  **(revised)** Food counts as available while it's left down, and an open-ended graze
-  lasts until that feeder's next fill. For windowed fills, each visit window is tried at
+  **(revised)** For a cat that grazes, food in a feeder it has to itself counts as
+  available until it's picked up or that feeder's next fill. For a cat that eats in one
+  go, each fill is a single moment. Fills in shared feeders are always a single moment,
+  since the other cat may eat what's left. For windowed fills, each visit window is tried at
   both ends and the worst result is shown, labelled "worst case". Gaps over 12 hours are
   highlighted.
 - **Wet food sitting out.** A wet fill left down for a long or open-ended time is a
-  spoilage risk. Flag wet fills left down more than 4 hours.
+  spoilage risk. Flag wet fills left down more than 4 hours. **(revised)** Only where a
+  grazing cat can get at it: a cat that eats in one go finishes it first.
 - **Hopper runway:** `hopperCups ÷ (portion × dispenses per day)`, i.e. how many days the
   auto feeder runs unattended. This is the number that matters when you're away.
 - **Food needed for a trip:** for a given number of days, total cups of each dry food and
@@ -189,7 +198,8 @@ shared-feeder estimate and the §4 checks. Fills are added, edited and deleted h
 - Which feeder belongs to which cat, and that each one is microchip-locked to that cat.
 - The manual fills grouped by time of day, or by visit window (**revised**), with amounts
   in both cups and scoops.
-- Which fills to leave down to graze and which are eaten straight away.
+- For each fill, whether to leave it down or pick up what's left at a set time
+  (**revised**).
 - The auto feeder: its schedule, marked *no action needed*, plus a hopper top-up reminder
   and the runway figure.
 - The total food to leave out for the trip.
@@ -235,6 +245,7 @@ screen and in Setup:
 |---|---|
 | Add the cats | |
 | Each cat's daily kcal target | Nothing to check against without them |
+| Whether each cat grazes or eats in one go *(optional)* | Used by the gap and wet-food checks; treated as grazing until set |
 | Add the foods | |
 | kcal per cup / per can for each food | Hand-applied conversion factors become unnecessary once these are known; confirm them from the packaging |
 | Add the feeders and which cats can use each | |
@@ -275,13 +286,21 @@ Decisions made while building the first version, compared with the original spec
    and auto dispenses keep set times. Checks take the worst case over each window, and the
    sitter sheet groups fills by visit ("Once a day, any time", "Once, any time
    09:00–18:00").
-2. **Leaving food down.** `grazesUntil?` became `graze`: eaten straight away, left down
-   until a time, or left down with no end time. With no end time, food lasts until that
-   feeder's next fill for the gap check, and wet food left down that way is always flagged.
+2. **Leaving food down.** `grazesUntil?` became an optional `pickUpAt` time: food stays
+   down until eaten unless someone picks it up. An earlier "eaten now" option was dropped,
+   because nobody controls when a cat finishes. Whether food lasts is now a property of
+   the cat (`eats`: grazes or eats in one go), and the gap and wet-food checks use both.
+   Schema version 3 migrates existing data: "eaten now" and "left down" become no
+   pick-up time, "until a time" becomes a pick-up time, and cats start with no eating
+   style set.
 3. **No seed data.** The repo is public, so nothing specific to the household is committed.
    §7 is a first-run checklist and §8 is re-entered by hand.
-4. **Stack.** Vite, TypeScript and Preact, with a GitHub Pages workflow. The workflow file
-   is stored at `docs/github-pages-workflow.yml` until it's moved into
-   `.github/workflows/`.
-5. **Thresholds.** Gaps over 12 hours are highlighted. Feedings per day are shown without a
+4. **Stack.** Vite, TypeScript and Preact, with a GitHub Pages workflow in
+   `.github/workflows/deploy.yml`.
+5. **Several foods per fill.** `foodId` and `qty` on a fill became `items`, so wet and dry
+   put down together are one fill: one timeline row, one feeding in the count, and one line
+   on the sitter sheet ("½ can … + ¼ cup …"). Leaving food down applies to the whole fill,
+   and only the wet items are flagged for sitting out. Schema version 2 migrates existing
+   data and imported backups.
+6. **Thresholds.** Gaps over 12 hours are highlighted. Feedings per day are shown without a
    warning threshold.
