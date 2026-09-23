@@ -254,6 +254,10 @@ screen and in Setup:
 | Hopper capacity *(optional)* | Enables the runway figure |
 | First plan | |
 
+Once every non-optional step is done, the checklist leaves the home screen and can be
+hidden in Setup (remembered per browser, with a "Show checklist" link to bring it back).
+It reappears if a new required step appears, e.g. after adding an auto feeder.
+
 ---
 
 ## 8. Migrating plans from the spreadsheet
