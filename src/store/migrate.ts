@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, emptyData, type AppData } from '../model/types';
+import { FOOD_FORMS, SCHEMA_VERSION, emptyData, type AppData } from '../model/types';
 
 /**
  * Upgrades stored or imported data to the current schema. Add a step here
@@ -77,7 +77,7 @@ function validate(d: any): void {
     if (!isObject(c) || !isString(c.id) || !isString(c.name) || !isNullableNumber(c.dailyKcal)) fail('a cat is malformed');
   }
   for (const f of d.foods) {
-    if (!isObject(f) || !isString(f.id) || !isString(f.name) || !['dry', 'wet'].includes(f.form) || !isNullableNumber(f.kcalPerUnit)) {
+    if (!isObject(f) || !isString(f.id) || !isString(f.name) || !FOOD_FORMS.includes(f.form) || !isNullableNumber(f.kcalPerUnit)) {
       fail('a food is malformed');
     }
   }

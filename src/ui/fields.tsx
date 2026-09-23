@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { FoodForm } from '../model/types';
-import { AMOUNT_CHIPS, formatAmount, formatQty, parseQty } from '../model/units';
+import { AMOUNT_CHIPS, UNIT, formatAmount, formatQty, parseQty } from '../model/units';
 
 /**
  * Runs fn when value changes, but not on mount. Effects run after paint, so a
@@ -104,7 +104,7 @@ export function NumberField(props: {
 
 /** Amount entry: fraction chips plus a free field that takes "1/8", "0.125", "1½"… */
 export function AmountField(props: { form: FoodForm; value: number | null; onChange: (v: number | null) => void }) {
-  const unit = props.form === 'dry' ? 'cups' : 'cans';
+  const unit = `${UNIT[props.form]}s`;
   return (
     <div class="amount">
       <div class="chips">

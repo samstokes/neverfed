@@ -61,6 +61,9 @@ describe('store', () => {
       expect(() => migrate({ schemaVersion: 2, ...base, ...bad })).toThrow(ImportError);
       expect(() => migrate({ schemaVersion: 3, ...base, ...bad })).toThrow(ImportError);
     }
+    const treat = { id: 't', name: 'T', form: 'treat', kcalPerUnit: 2, notes: '' };
+    expect(migrate({ schemaVersion: 3, ...base, foods: [treat], plans: [] }).foods).toEqual([treat]);
+    expect(() => migrate({ schemaVersion: 3, ...base, foods: [{ ...treat, form: 'snack' }], plans: [] })).toThrow(/food is malformed/);
     expect(() => migrate({ schemaVersion: 99, cats: [], foods: [], feeders: [], plans: [] })).toThrow(/newer version/);
   });
 });

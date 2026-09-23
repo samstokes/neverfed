@@ -57,6 +57,8 @@ describe('units', () => {
     expect(formatAmount('dry', 1.5)).toBe('1½ cups · 6 scoops');
     expect(formatAmount('wet', 0.5)).toBe('½ can');
     expect(formatAmount('wet', 3)).toBe('3 cans');
+    expect(formatAmount('treat', 1)).toBe('1 treat');
+    expect(formatAmount('treat', 3)).toBe('3 treats');
   });
   it('formats odd quantities as decimals', () => {
     expect(formatQty(0.3)).toBe('0.3');
@@ -113,6 +115,17 @@ describe('calories', () => {
     expect(s.totals[0]!.status).toBe('unknown');
     expect(s.totals[1]!.kcal).toBe(200);
     expect(s.issues).toContain('Lite kibble has no kcal per cup');
+  });
+
+  it('counts treats by kcal per treat, and flags a feeder that doesn’t take them', () => {
+    const d = fixture();
+    d.foods.push({ id: 'trt', name: 'Treats', form: 'treat', kcalPerUnit: 2, notes: '' });
+    d.feeders[0]!.accepts.push('treat');
+    const plan = { id: 'p', name: 'P', notes: '', fills: [fill('fa', at('08:00'), 'trt', 5), fill('fb', at('08:00'), 'trt', 3)] };
+    const s = summarisePlan(d, plan);
+    expect(s.totals[0]!.kcal).toBe(10);
+    expect(describeItems(s.fills[0]!.items)).toBe('5 treats Treats');
+    expect(s.issues).toContain("fb doesn't take treats (Treats)");
   });
 
   it('flags an auto feeder with no portion', () => {

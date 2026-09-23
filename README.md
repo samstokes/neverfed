@@ -10,7 +10,7 @@ your cats, foods and feeders.
 
 ## Using it
 
-1. **Setup**: add cats (daily kcal target), foods (dry or wet, kcal per cup or per can) and
+1. **Setup**: add cats (daily kcal target), foods (dry, wet or treats; kcal per cup, per can or per treat) and
    feeders (manual/microchip or automatic, which cats can use each one, what it accepts).
    Auto feeders also get a loaded food, a portion per dispense and an optional hopper size.
 2. **Plans**: one day's schedule per scenario. Every plan card shows each cat's kcal against
