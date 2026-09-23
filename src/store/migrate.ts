@@ -5,7 +5,18 @@ import { SCHEMA_VERSION, emptyData, type AppData } from '../model/types';
  * whenever the model changes: `migrations[n]` turns version n into n + 1.
  */
 const migrations: Record<number, (d: any) => any> = {
-  // 1: (d) => ({ ...d, schemaVersion: 2, ... }),
+  // v2: a fill can hold several foods (e.g. wet and dry put down together).
+  1: (d) => ({
+    ...d,
+    schemaVersion: 2,
+    plans: !Array.isArray(d.plans) ? d.plans : d.plans.map((p: any) => ({
+      ...p,
+      fills: p.fills.map(({ foodId, qty, ...f }: any) => ({
+        ...f,
+        items: foodId || qty != null ? [{ foodId: foodId ?? null, qty: qty ?? null }] : [],
+      })),
+    })),
+  }),
 };
 
 export class ImportError extends Error {}

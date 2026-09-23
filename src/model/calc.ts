@@ -1,13 +1,21 @@
 import type { AppData, Cat, Feeder, Fill, Food, Plan } from './types';
+import { formatAmount } from './units';
 
-/** A fill with its food and amount resolved (from the fill if manual, from the feeder if auto). */
+/** One food in a fill, resolved. */
+export interface ResolvedItem {
+  food: Food | undefined;
+  qty: number | null;
+  /** null when it can't be computed. */
+  kcal: number | null;
+}
+
+/** A fill with its foods and amounts resolved (from the fill if manual, from the feeder if auto). */
 export interface ResolvedFill {
   fill: Fill;
   feeder: Feeder | undefined;
-  food: Food | undefined;
-  qty: number | null;
+  items: ResolvedItem[];
   manual: boolean;
-  /** null when it can't be computed; see issues. */
+  /** Sum over items; null when any can't be computed. See issues. */
   kcal: number | null;
   /** Fraction of this fill's calories credited to each cat. */
   attribution: Record<string, number>;
@@ -66,38 +74,49 @@ export function attributionFor(feeder: Feeder): Record<string, number> {
 }
 
 export function resolveFill(data: AppData, fill: Fill): ResolvedFill {
-  const issues: string[] = [];
   const feeder = data.feeders.find((f) => f.id === fill.feederId);
   if (!feeder) {
     return {
-      fill, feeder, food: undefined, qty: null, manual: true, kcal: null, attribution: {},
+      fill, feeder, items: [], manual: true, kcal: null, attribution: {},
       issues: ['A fill uses a feeder that no longer exists'],
     };
   }
+  const issues: string[] = [];
   const manual = feeder.kind !== 'auto';
-  const foodId = manual ? fill.foodId : feeder.loadedFoodId;
-  const food = foodId ? data.foods.find((f) => f.id === foodId) : undefined;
-  const qty = manual ? fill.qty : feeder.portion;
+  const raw = manual ? fill.items : [{ foodId: feeder.loadedFoodId, qty: feeder.portion }];
 
-  if (!food) {
-    issues.push(manual ? `A fill in ${feeder.name} has no food chosen` : `${feeder.name} has no food loaded`);
-  } else if (food.kcalPerUnit === null) {
-    issues.push(`${food.name} has no kcal per ${food.form === 'dry' ? 'cup' : 'can'}`);
-  }
-  if (qty === null || !Number.isFinite(qty)) {
-    issues.push(manual ? `A fill in ${feeder.name} has no amount` : `${feeder.name} has no portion size set`);
-  }
-  if (feeder.catIds.length === 0) {
-    issues.push(`${feeder.name} isn't assigned to any cats`);
-  }
-  if (food && !feeder.accepts.includes(food.form)) {
-    issues.push(`${feeder.name} doesn't take ${food.form} food (${food.name})`);
-  }
+  const items: ResolvedItem[] = raw.map(({ foodId, qty }) => {
+    const food = foodId ? data.foods.find((f) => f.id === foodId) : undefined;
+    if (!food) {
+      issues.push(manual ? `A fill in ${feeder.name} has no food chosen` : `${feeder.name} has no food loaded`);
+    } else if (food.kcalPerUnit === null) {
+      issues.push(`${food.name} has no kcal per ${food.form === 'dry' ? 'cup' : 'can'}`);
+    }
+    if (qty === null || !Number.isFinite(qty)) {
+      issues.push(manual ? `A fill in ${feeder.name} has no amount` : `${feeder.name} has no portion size set`);
+    }
+    if (food && !feeder.accepts.includes(food.form)) {
+      issues.push(`${feeder.name} doesn't take ${food.form} food (${food.name})`);
+    }
+    const kcal =
+      food && food.kcalPerUnit !== null && qty !== null && Number.isFinite(qty) ? qty * food.kcalPerUnit : null;
+    return { food, qty, kcal };
+  });
+  if (manual && items.length === 0) issues.push(`A fill in ${feeder.name} has no food chosen`);
+  if (feeder.catIds.length === 0) issues.push(`${feeder.name} isn't assigned to any cats`);
 
-  const kcal =
-    food && food.kcalPerUnit !== null && qty !== null && Number.isFinite(qty) ? qty * food.kcalPerUnit : null;
+  const kcal = items.length > 0 && items.every((i) => i.kcal !== null) ? items.reduce((a, i) => a + i.kcal!, 0) : null;
+  return { fill, feeder, items, manual, kcal, attribution: attributionFor(feeder), issues };
+}
 
-  return { fill, feeder, food, qty, manual, kcal, attribution: attributionFor(feeder), issues };
+/** "½ can Tin + ¼ cup · 1 scoop Kibble" */
+export function describeItems(items: ResolvedItem[]): string {
+  return items
+    .map((i) => {
+      const amount = i.food && i.qty !== null ? formatAmount(i.food.form, i.qty) : '?';
+      return `${amount} ${i.food?.name ?? '?'}`;
+    })
+    .join(' + ');
 }
 
 export function summarisePlan(data: AppData, plan: Plan): PlanSummary {

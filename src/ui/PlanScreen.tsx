@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { attributionFor, summarisePlan, type PlanSummary, type ResolvedFill } from '../model/calc';
+import { attributionFor, describeItems, summarisePlan, type PlanSummary, type ResolvedFill } from '../model/calc';
 import { feedingsPerDay, hopperRunway, longestGap, wetSittingOut, WET_MAX_MINUTES } from '../model/checks';
 import { formatDuration, formatFillTime, fromMin, startMin } from '../model/time';
 import type { AppData, Fill, Plan } from '../model/types';
@@ -200,7 +200,7 @@ function Checks({ data, plan, summary }: { data: AppData; plan: Plan; summary: P
         })}
         {wet.map((w) => (
           <li class="warn">
-            Wet food: {formatAmount('wet', w.fill.qty ?? 0)} {w.food.name} in {w.feeder.name}{' '}
+            Wet food: {w.qty !== null ? formatAmount('wet', w.qty) : '?'} {w.food.name} in {w.feeder.name}{' '}
             {w.minutes === null
               ? 'is left down with no pick-up time'
               : `sits out for ${formatDuration(w.minutes)}`}
@@ -248,7 +248,7 @@ function Timeline({ data, fills, onEdit }: { data: AppData; fills: ResolvedFill[
                   </span>
                 </span>
                 <span class="tl-food">
-                  {rf.food && rf.qty !== null ? `${formatAmount(rf.food.form, rf.qty)} ${rf.food.name}` : rf.manual ? '?' : 'Portion not set'}
+                  {rf.items.length ? describeItems(rf.items) : '?'}
                 </span>
                 {rf.fill.note && <span class="tl-note">{rf.fill.note}</span>}
               </span>

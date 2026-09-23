@@ -1,4 +1,4 @@
-import { summarisePlan, type ResolvedFill } from './calc';
+import { describeItems, summarisePlan, type ResolvedFill } from './calc';
 import { foodForTrip, hopperRunway } from './checks';
 import { formatFillTime, isAllDay, startMin, timeKey } from './time';
 import type { AppData, Plan } from './types';
@@ -83,9 +83,7 @@ export function sitterText(data: AppData, plan: Plan, daysAway: number): string 
     for (const rf of g.fills) {
       const feederName = rf.feeder?.name ?? '?';
       const who = rf.feeder ? catNames(data, rf.feeder.catIds) : '?';
-      const amount = rf.food && rf.qty !== null ? formatAmount(rf.food.form, rf.qty) : '? amount';
-      const food = rf.food?.name ?? '? food';
-      lines.push(`  • ${feederName} (${who}): ${amount} ${food}, ${grazeInstruction(rf)}`);
+      lines.push(`  • ${feederName} (${who}): ${describeItems(rf.items)}, ${grazeInstruction(rf)}`);
       if (rf.fill.note.trim()) lines.push(`    ${rf.fill.note.trim()}`);
     }
   }

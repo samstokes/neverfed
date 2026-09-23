@@ -56,15 +56,22 @@ export type Graze =
   | { kind: 'until'; until: string } // left down until a time
   | { kind: 'open' }; // left down; no set end
 
+/** One food in a fill. */
+export interface FillItem {
+  foodId: string | null;
+  /** In the food's unit: cups (dry) or cans (wet). */
+  qty: number | null;
+}
+
 export interface Fill {
   id: string;
   feederId: string;
   time: FillTime;
 
   // Manual fills only. Auto dispenses take food and amount from the feeder.
-  foodId: string | null;
-  /** In the food's unit: cups (dry) or cans (wet). */
-  qty: number | null;
+  /** What's put down together, e.g. wet and dry in the same bowl. One feeding however many foods. */
+  items: FillItem[];
+  /** Applies to everything in the fill. */
   graze: Graze;
   note: string;
 }
@@ -76,7 +83,7 @@ export interface Plan {
   fills: Fill[];
 }
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export interface AppData {
   schemaVersion: typeof SCHEMA_VERSION;

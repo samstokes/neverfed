@@ -31,9 +31,10 @@ manual feedings.
 In the spreadsheet, a morning portion that one cat grazes on all day is a single merged
 cell spanning several rows: one portion put down in the morning, not several feedings.
 Treating rows as slots would count that portion several times. So the basic unit is a
-**fill**: an amount of one food put into one feeder at one time. A fill can optionally be
-left down to graze. That changes the schedule display and the gap and wet-food checks,
-but never the calorie count.
+**fill**: what's put into one feeder at one time. **(revised)** That can be one food or
+several put down together, such as wet and dry in the same bowl, and it counts as one
+feeding either way. A fill can optionally be left down to graze. That changes the
+schedule display and the gap and wet-food checks, but never the calorie count.
 
 **2. Food is a first-class record with a calorie density.**
 A footnote like "amounts assume food A, multiply by 1.5 for food B" is a calorie conversion
@@ -89,11 +90,12 @@ Fill {                                                        // (revised)
       | { kind: 'window', from: 'HH:MM', to: 'HH:MM' },       // a sitter visit window
 
   // manual fills only:
-  foodId,
-  qty,                        // in the food's unit: cups or cans
+  items: { foodId, qty }[],   // (revised) one or more foods put down together;
+                              // qty in the food's unit: cups or cans
   graze: { kind: 'none' }                      // eaten when put down
        | { kind: 'until', until: 'HH:MM' }     // left down until a time
        | { kind: 'open' },                     // left down with no end time
+                                               // (applies to everything in the fill)
   note
 }
 
@@ -123,7 +125,7 @@ spreadsheet: a scoop is ¼ cup, so ½ cup shows as "½ cup · 2 scoops" and ⅛ 
 ## 3. Calorie calculation
 
 ```
-fill_kcal   = qty × food.kcalPerUnit
+fill_kcal   = Σ over items of qty × food.kcalPerUnit   // (revised) unknown if any item's is
 attribution = feeder.catIds.length === 1
                 ? { [thatCat]: 1 }
                 : normalise(feeder.share)      // weights, default even
@@ -283,5 +285,10 @@ Decisions made while building the first version, compared with the original spec
 4. **Stack.** Vite, TypeScript and Preact, with a GitHub Pages workflow. The workflow file
    is stored at `docs/github-pages-workflow.yml` until it's moved into
    `.github/workflows/`.
-5. **Thresholds.** Gaps over 12 hours are highlighted. Feedings per day are shown without a
+5. **Several foods per fill.** `foodId` and `qty` on a fill became `items`, so wet and dry
+   put down together are one fill: one timeline row, one feeding in the count, and one line
+   on the sitter sheet ("½ can … + ¼ cup …"). Leaving food down applies to the whole fill,
+   and only the wet items are flagged for sitting out. Schema version 2 migrates existing
+   data and imported backups.
+6. **Thresholds.** Gaps over 12 hours are highlighted. Feedings per day are shown without a
    warning threshold.

@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { isValidTime } from '../model/time';
-import { newId, type AppData, type Fill } from '../model/types';
+import { newId, type AppData, type Fill, type FillItem } from '../model/types';
 import { formatAmount } from '../model/units';
 import { AmountField, Segmented } from './fields';
 
@@ -12,8 +12,7 @@ export function blankFill(data: AppData): Fill {
     id: newId(),
     feederId: feeder?.id ?? '',
     time: { kind: 'at', at: '09:00' },
-    foodId: null,
-    qty: null,
+    items: [{ foodId: null, qty: null }],
     graze: { kind: 'none' },
     note: '',
   };
@@ -34,7 +33,8 @@ export function FillEditor(props: {
   const feeder = data.feeders.find((x) => x.id === f.feederId);
   const auto = feeder?.kind === 'auto';
   const foods = data.foods.filter((x) => !feeder || feeder.accepts.includes(x.form));
-  const food = data.foods.find((x) => x.id === f.foodId);
+  const setItem = (i: number, patch: Partial<FillItem>) =>
+    setF((prev) => ({ ...prev, items: prev.items.map((it, j) => (j === i ? { ...it, ...patch } : it)) }));
   const loaded = auto ? data.foods.find((x) => x.id === feeder.loadedFoodId) : undefined;
 
   const errors: string[] = [];
@@ -43,8 +43,8 @@ export function FillEditor(props: {
   if (f.time.kind === 'window' && (!isValidTime(f.time.from) || !isValidTime(f.time.to, true)))
     errors.push('Enter the window’s start and end.');
   if (!auto) {
-    if (!food) errors.push('Choose a food.');
-    if (f.qty === null || f.qty <= 0) errors.push('Enter an amount.');
+    if (f.items.length === 0 || f.items.some((i) => !data.foods.some((x) => x.id === i.foodId))) errors.push('Choose a food.');
+    if (f.items.some((i) => i.qty === null || i.qty <= 0)) errors.push('Enter an amount.');
     if (f.graze.kind === 'until' && !isValidTime(f.graze.until)) errors.push('Enter when it’s picked up.');
   }
 
@@ -52,7 +52,7 @@ export function FillEditor(props: {
     if (errors.length) return;
     // Auto dispenses take food and amount from the feeder, at a set time.
     const out: Fill = auto
-      ? { ...f, foodId: null, qty: null, graze: { kind: 'none' }, time: f.time.kind === 'at' ? f.time : { kind: 'at', at: f.time.from } }
+      ? { ...f, items: [], graze: { kind: 'none' }, time: f.time.kind === 'at' ? f.time : { kind: 'at', at: f.time.from } }
       : f;
     props.onSave(out);
   };
@@ -73,8 +73,14 @@ export function FillEditor(props: {
               const next = data.feeders.find((x) => x.id === id);
               const patch: Partial<Fill> = { feederId: id };
               if (next?.kind === 'auto' && f.time.kind === 'window') patch.time = { kind: 'at', at: '09:00' };
-              const keptFood = data.foods.find((x) => x.id === f.foodId);
-              if (keptFood && next && !next.accepts.includes(keptFood.form)) patch.foodId = null;
+              if (next && next.kind !== 'auto') {
+                // Keep what the new feeder can take; always leave at least one row to fill in.
+                const kept = f.items.map((it) => {
+                  const food = data.foods.find((x) => x.id === it.foodId);
+                  return food && !next.accepts.includes(food.form) ? { foodId: null, qty: null } : it;
+                });
+                patch.items = kept.length ? kept : [{ foodId: null, qty: null }];
+              }
               set(patch);
             }}
           >
@@ -160,23 +166,52 @@ export function FillEditor(props: {
 
         {!auto && (
           <>
-            <label>
-              Food
-              <select value={f.foodId ?? ''} onChange={(e) => set({ foodId: (e.target as HTMLSelectElement).value || null })}>
-                <option value="">— choose —</option>
-                {foods.map((x) => (
-                  <option value={x.id}>
-                    {x.name || 'Unnamed'} ({x.form})
-                  </option>
-                ))}
-              </select>
-            </label>
-            {food && (
-              <div class="field">
-                <span>Amount</span>
-                <AmountField form={food.form} value={f.qty} onChange={(qty) => set({ qty })} />
-              </div>
-            )}
+            <div class="field">
+              <span>{f.items.length > 1 ? 'Foods, put down together' : 'Food'}</span>
+              {f.items.map((it, i) => {
+                const food = data.foods.find((x) => x.id === it.foodId);
+                return (
+                  <div class="fill-item" key={i}>
+                    <div class="fill-item-head">
+                      <select
+                        aria-label={`Food ${i + 1}`}
+                        value={it.foodId ?? ''}
+                        onChange={(e) => {
+                          const next = data.foods.find((x) => x.id === (e.target as HTMLSelectElement).value);
+                          // Cups and cans don't convert, so a change of form clears the amount.
+                          setItem(i, { foodId: next?.id ?? null, qty: next && food && next.form !== food.form ? null : it.qty });
+                        }}
+                      >
+                        <option value="">— choose —</option>
+                        {foods.map((x) => (
+                          <option value={x.id}>
+                            {x.name || 'Unnamed'} ({x.form})
+                          </option>
+                        ))}
+                      </select>
+                      {f.items.length > 1 && (
+                        <button
+                          type="button"
+                          class="btn small danger"
+                          aria-label={`Remove food ${i + 1}`}
+                          onClick={() => set({ items: f.items.filter((_, j) => j !== i) })}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    {food && <AmountField form={food.form} value={it.qty} onChange={(qty) => setItem(i, { qty })} />}
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                class="btn small add-food"
+                onClick={() => set({ items: [...f.items, { foodId: null, qty: null }] })}
+              >
+                + Add another food
+              </button>
+            </div>
             <div class="field">
               <span>Left down?</span>
               <Segmented
@@ -200,6 +235,7 @@ export function FillEditor(props: {
                 />
               )}
               <p class="muted small">
+                {f.items.length > 1 && 'Applies to everything in this fill. '}
                 {f.graze.kind === 'none' && 'Put down and eaten straight away.'}
                 {f.graze.kind === 'until' && 'Left down to graze until this time.'}
                 {f.graze.kind === 'open' && 'Left down to graze until the next fill.'}{' '}

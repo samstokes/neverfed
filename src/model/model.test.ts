@@ -18,7 +18,7 @@ function fixture(): AppData {
     ...f,
   });
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     cats: [
       { id: 'a', name: 'Alpha', dailyKcal: 200, color: '#f00' },
       { id: 'b', name: 'Bravo', dailyKcal: 250, color: '#00f' },
@@ -42,7 +42,10 @@ function at(t: string): FillTime {
   return { kind: 'at', at: t };
 }
 function fill(feederId: string, time: FillTime, foodId: string | null = null, qty: number | null = null, graze: Graze = { kind: 'none' }): Fill {
-  return { id: `f${n++}`, feederId, time, foodId, qty, graze, note: '' };
+  return { id: `f${n++}`, feederId, time, items: foodId ? [{ foodId, qty }] : [], graze, note: '' };
+}
+function mixed(feederId: string, time: FillTime, items: [string, number][], graze: Graze = { kind: 'none' }): Fill {
+  return { id: `f${n++}`, feederId, time, items: items.map(([foodId, qty]) => ({ foodId, qty })), graze, note: '' };
 }
 
 describe('units', () => {
@@ -132,6 +135,45 @@ describe('calories', () => {
     expect(statusFor(0.96)).toBe('on');
     expect(statusFor(1.05)).toBe('on');
     expect(statusFor(1.06)).toBe('over');
+  });
+});
+
+describe('fills with several foods', () => {
+  it('sums calories and counts as one feeding', () => {
+    const d = fixture();
+    const plan = { id: 'p', name: 'P', notes: '', fills: [mixed('fa', at('08:00'), [['tin', 0.5], ['kib', 0.25]])] };
+    const s = summarisePlan(d, plan);
+    expect(s.totals[0]!.kcal).toBe(140); // 40 + 100
+    expect(feedingsPerDay(d, plan, 'a')).toBe(1);
+  });
+
+  it('is unknown if any food is missing a density', () => {
+    const d = fixture();
+    const plan = { id: 'p', name: 'P', notes: '', fills: [mixed('fa', at('08:00'), [['tin', 0.5], ['lite', 0.25]])] };
+    const s = summarisePlan(d, plan);
+    expect(s.totals[0]!.kcal).toBeNull();
+    expect(s.totals[0]!.knownKcal).toBe(0);
+  });
+
+  it('flags only the wet part when left down, and totals each food for a trip', () => {
+    const d = fixture();
+    const plan = { id: 'p', name: 'P', notes: '', fills: [mixed('fa', at('08:00'), [['tin', 0.5], ['kib', 0.25]], { kind: 'open' })] };
+    const s = summarisePlan(d, plan);
+    expect(wetSittingOut(s.fills).map((w) => [w.food.id, w.qty])).toEqual([['tin', 0.5]]);
+    expect(foodForTrip(s.fills, 2).map((x) => [x.food.id, x.total])).toEqual([['tin', 1], ['kib', 0.5]]);
+  });
+
+  it('shows as one line on the sitter sheet', () => {
+    const d = fixture();
+    const plan = { id: 'p', name: 'P', notes: '', fills: [mixed('fa', at('08:00'), [['tin', 0.5], ['kib', 0.25]], { kind: 'open' })] };
+    expect(sitterText(d, plan, 1)).toContain('fa (Alpha): ½ can Tin + ¼ cup · 1 scoop Kibble, leave it down to graze');
+  });
+
+  it('flags an empty manual fill', () => {
+    const d = fixture();
+    const s = summarisePlan(d, { id: 'p', name: 'P', notes: '', fills: [mixed('fa', at('08:00'), [])] });
+    expect(s.totals[0]!.kcal).toBeNull();
+    expect(s.issues).toContain('A fill in fa has no food chosen');
   });
 });
 

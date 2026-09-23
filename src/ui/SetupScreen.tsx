@@ -190,7 +190,7 @@ function FoodEditor({ food, autoFocus }: { food: Food; autoFocus: boolean }) {
     update((d) => {
       Object.assign(d.foods.find((f) => f.id === food.id)!, patch);
     });
-  const plans = usedBy(data, (fill) => fill.foodId === food.id);
+  const plans = usedBy(data, (fill) => fill.items.some((i) => i.foodId === food.id));
   const loadedIn = data.feeders.filter((f) => f.loadedFoodId === food.id).map((f) => f.name);
   const blockers = [...plans.map((p) => `plan “${p}”`), ...loadedIn.map((f) => `feeder “${f}”`)];
   return (
