@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { attributionFor } from '../model/calc';
 import { setupSteps } from '../model/setup';
-import { newId, type AppData, type Cat, type EatingStyle, type Feeder, type Food, type FoodForm } from '../model/types';
-import { formatAmount } from '../model/units';
+import { FOOD_FORMS, newId, type AppData, type Cat, type EatingStyle, type Feeder, type Food, type FoodForm } from '../model/types';
+import { UNIT, formatAmount } from '../model/units';
 import { ImportError, migrate } from '../store/migrate';
 import { NumberField, Segmented, TextField } from './fields';
 import { useStore } from './state';
@@ -191,7 +191,7 @@ function FoodsSection() {
       title="Foods"
       onAdd={add}
       addLabel="Food"
-      hint="Calorie density is per cup for dry food and per can for wet. It’s usually printed as “ME” (metabolisable energy) on the bag or tin."
+      hint="Calorie density is per cup for dry food, per can for wet and per treat for treats. It’s usually printed as “ME” (metabolisable energy) on the bag or tin. Treat bags often give it per kg instead: divide by the number of treats in a kilo for an estimate (most cat treats are 1–3 kcal each)."
     >
       {data.foods.length === 0 && <p class="empty">No foods yet.</p>}
       {data.foods.map((f) => (
@@ -224,6 +224,7 @@ function FoodEditor({ food, autoFocus }: { food: Food; autoFocus: boolean }) {
           options={[
             { value: 'dry', label: 'Dry' },
             { value: 'wet', label: 'Wet' },
+            { value: 'treat', label: 'Treat' },
           ]}
           onChange={(form) => set({ form })}
         />
@@ -233,7 +234,8 @@ function FoodEditor({ food, autoFocus }: { food: Food; autoFocus: boolean }) {
         <NumberField
           value={food.kcalPerUnit}
           onCommit={(kcalPerUnit) => set({ kcalPerUnit })}
-          suffix={food.form === 'dry' ? 'kcal/cup' : 'kcal/can'}
+          suffix={`kcal/${UNIT[food.form]}`}
+          placeholder={food.form === 'treat' ? 'estimate, e.g. 2' : undefined}
         />
       </label>
       <label>
@@ -268,7 +270,7 @@ function FeedersSection() {
         name: '',
         kind: 'microchip',
         catIds: [],
-        accepts: ['dry', 'wet'],
+        accepts: [...FOOD_FORMS],
         loadedFoodId: null,
         portion: null,
         hopperCups: null,
@@ -359,7 +361,7 @@ function FeederEditor({ feeder, autoFocus }: { feeder: Feeder; autoFocus: boolea
         <div class="field">
           <span>Accepts</span>
           <div class="checks">
-            {(['dry', 'wet'] as const).map((form) => (
+            {FOOD_FORMS.map((form) => (
               <label class="check">
                 <input
                   type="checkbox"
@@ -371,7 +373,7 @@ function FeederEditor({ feeder, autoFocus }: { feeder: Feeder; autoFocus: boolea
                     })
                   }
                 />
-                {form === 'dry' ? 'Dry' : 'Wet'}
+                {{ dry: 'Dry', wet: 'Wet', treat: 'Treats' }[form]}
               </label>
             ))}
           </div>

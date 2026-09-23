@@ -63,8 +63,8 @@ Cat {
 
 Food {
   id, name,
-  form: 'dry' | 'wet',
-  kcalPerUnit: number | null, // per cup (dry) or per can (wet): the "ME" figure on the bag or tin
+  form: 'dry' | 'wet' | 'treat',
+  kcalPerUnit: number | null, // per cup (dry), per can (wet) or per treat: the "ME" figure on the bag or tin
   notes
 }
 
@@ -72,7 +72,7 @@ Feeder {
   id, name,
   kind: 'microchip' | 'auto',
   catIds: string[],           // who can physically get at it
-  accepts: ('dry' | 'wet')[],
+  accepts: ('dry' | 'wet' | 'treat')[],
 
   // auto feeders only. These live on the device, not on each dispense:
   loadedFoodId,               // the hopper holds one dry food at a time
@@ -209,8 +209,8 @@ It's output as copyable text, a share button (where the device supports it), a s
 `.txt` file, and a print view that can be saved as PDF. The sitter wants something they
 can keep open on a phone or stick to the fridge.
 
-**Setup.** Cats (name, daily kcal target, colour); foods (name, wet or dry, kcal per cup or
-per can); feeders (name, kind, which cats can use it, what it accepts). Auto feeders also
+**Setup.** Cats (name, daily kcal target, colour); foods (name, wet, dry or treat, kcal per cup,
+per can or per treat); feeders (name, kind, which cats can use it, what it accepts). Auto feeders also
 have a loaded food, portion, hopper size and share. Setup also has JSON export and import.
 
 ---

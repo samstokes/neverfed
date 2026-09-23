@@ -1,6 +1,8 @@
 // Data model. See README for the reasoning behind the shapes here.
 
-export type FoodForm = 'dry' | 'wet';
+export type FoodForm = 'dry' | 'wet' | 'treat';
+
+export const FOOD_FORMS: FoodForm[] = ['dry', 'wet', 'treat'];
 
 export interface Cat {
   id: string;
@@ -22,7 +24,10 @@ export interface Food {
   id: string;
   name: string;
   form: FoodForm;
-  /** kcal per cup (dry) or per can (wet): the "ME" figure on the bag or tin. */
+  /**
+   * kcal per cup (dry), per can (wet) or per treat: the "ME" figure on the bag or tin.
+   * Treat bags often give kcal/kg instead, so the per-treat figure is usually an estimate.
+   */
   kcalPerUnit: number | null;
   notes: string;
 }
@@ -60,7 +65,7 @@ export type FillTime =
 /** One food in a fill. */
 export interface FillItem {
   foodId: string | null;
-  /** In the food's unit: cups (dry) or cans (wet). */
+  /** In the food's unit: cups (dry), cans (wet) or treats. */
   qty: number | null;
 }
 

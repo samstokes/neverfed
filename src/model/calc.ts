@@ -1,5 +1,5 @@
 import type { AppData, Cat, Feeder, Fill, Food, Plan } from './types';
-import { formatAmount } from './units';
+import { UNIT, formatAmount } from './units';
 
 /** One food in a fill, resolved. */
 export interface ResolvedItem {
@@ -90,13 +90,13 @@ export function resolveFill(data: AppData, fill: Fill): ResolvedFill {
     if (!food) {
       issues.push(manual ? `A fill in ${feeder.name} has no food chosen` : `${feeder.name} has no food loaded`);
     } else if (food.kcalPerUnit === null) {
-      issues.push(`${food.name} has no kcal per ${food.form === 'dry' ? 'cup' : 'can'}`);
+      issues.push(`${food.name} has no kcal per ${UNIT[food.form]}`);
     }
     if (qty === null || !Number.isFinite(qty)) {
       issues.push(manual ? `A fill in ${feeder.name} has no amount` : `${feeder.name} has no portion size set`);
     }
     if (food && !feeder.accepts.includes(food.form)) {
-      issues.push(`${feeder.name} doesn't take ${food.form} food (${food.name})`);
+      issues.push(`${feeder.name} doesn't take ${food.form === 'treat' ? 'treats' : `${food.form} food`} (${food.name})`);
     }
     const kcal =
       food && food.kcalPerUnit !== null && qty !== null && Number.isFinite(qty) ? qty * food.kcalPerUnit : null;

@@ -34,14 +34,17 @@ function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
 }
 
+/** The unit a food's calorie density and amounts are given in. */
+export const UNIT: Record<FoodForm, string> = { dry: 'cup', wet: 'can', treat: 'treat' };
+
 export function unitName(form: FoodForm, qty: number): string {
   if (form === 'dry') return 'cup';
-  return Math.abs(qty - 1) < EPS || qty < 1 ? 'can' : 'cans';
+  return Math.abs(qty - 1) < EPS || qty < 1 ? UNIT[form] : `${UNIT[form]}s`;
 }
 
-/** "½ cup · 2 scoops", "⅛ cup · ½ scoop", "½ can". */
+/** "½ cup · 2 scoops", "⅛ cup · ½ scoop", "½ can", "3 treats". */
 export function formatAmount(form: FoodForm, qty: number): string {
-  if (form === 'wet') return `${formatQty(qty)} ${unitName('wet', qty)}`;
+  if (form !== 'dry') return `${formatQty(qty)} ${unitName(form, qty)}`;
   const cups = `${formatQty(qty)} ${qty > 1 + EPS ? 'cups' : 'cup'}`;
   const scoops = qty / CUPS_PER_SCOOP;
   const scoopWord = scoops > 1 + EPS ? 'scoops' : 'scoop';
@@ -52,6 +55,7 @@ export function formatAmount(form: FoodForm, qty: number): string {
 export const AMOUNT_CHIPS: Record<FoodForm, number[]> = {
   dry: [1 / 8, 1 / 4, 3 / 8, 1 / 2, 5 / 8, 3 / 4, 1],
   wet: [1 / 4, 1 / 3, 1 / 2, 2 / 3, 3 / 4, 1],
+  treat: [1, 2, 3, 4, 5, 10],
 };
 
 /** Parses "0.125", "1/8", "1 1/2", "½", "1½". Returns null if unparseable. */
