@@ -39,6 +39,11 @@ describe('store', () => {
     expect(() => migrate({})).toThrow(ImportError);
     expect(() => migrate({ schemaVersion: 3, cats: [] })).toThrow(/missing foods/);
     expect(() => migrate({ schemaVersion: 1, cats: [] })).toThrow(/missing foods/);
+    // Malformed plans from any version are a clear import error, not a crash.
+    for (const v of [1, 2, 3]) {
+      expect(() => migrate({ schemaVersion: v, cats: [], foods: [], feeders: [], plans: [{ id: 'p' }] })).toThrow(ImportError);
+      expect(() => migrate({ schemaVersion: v, cats: [], foods: [], feeders: [], plans: [null] })).toThrow(ImportError);
+    }
     expect(() => migrate({ schemaVersion: 99, cats: [], foods: [], feeders: [], plans: [] })).toThrow(/newer version/);
   });
 });

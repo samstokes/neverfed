@@ -111,6 +111,7 @@ export function resolveFill(data: AppData, fill: Fill): ResolvedFill {
 
 /** "½ can Tin + ¼ cup · 1 scoop Kibble" */
 export function describeItems(items: ResolvedItem[]): string {
+  if (items.length === 0) return 'no food chosen';
   return items
     .map((i) => {
       const amount = i.food && i.qty !== null ? formatAmount(i.food.form, i.qty) : '?';

@@ -175,6 +175,7 @@ describe('fills with several foods', () => {
     const s = summarisePlan(d, { id: 'p', name: 'P', notes: '', fills: [mixed('fa', at('08:00'), [])] });
     expect(s.totals[0]!.kcal).toBeNull();
     expect(s.issues).toContain('A fill in fa has no food chosen');
+    expect(sitterText(d, { id: 'p', name: 'P', notes: '', fills: [mixed('fa', at('08:00'), [])] }, 1)).toContain('fa (Alpha): no food chosen, leave it down');
   });
 });
 

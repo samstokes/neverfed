@@ -249,7 +249,7 @@ function Timeline({ data, fills, onEdit }: { data: AppData; fills: ResolvedFill[
                   </span>
                 </span>
                 <span class="tl-food">
-                  {rf.items.length ? describeItems(rf.items) : '?'}
+                  {describeItems(rf.items)}
                 </span>
                 {rf.fill.note && <span class="tl-note">{rf.fill.note}</span>}
               </span>

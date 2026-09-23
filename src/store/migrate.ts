@@ -11,7 +11,7 @@ const migrations: Record<number, (d: any) => any> = {
     schemaVersion: 2,
     plans: !Array.isArray(d.plans) ? d.plans : d.plans.map((p: any) => ({
       ...p,
-      fills: p.fills.map(({ foodId, qty, ...f }: any) => ({
+      fills: !Array.isArray(p?.fills) ? p?.fills : p.fills.map(({ foodId, qty, ...f }: any) => ({
         ...f,
         items: foodId || qty != null ? [{ foodId: foodId ?? null, qty: qty ?? null }] : [],
       })),
@@ -25,7 +25,7 @@ const migrations: Record<number, (d: any) => any> = {
     cats: !Array.isArray(d.cats) ? d.cats : d.cats.map((c: any) => ({ ...c, eats: c.eats ?? null })),
     plans: !Array.isArray(d.plans) ? d.plans : d.plans.map((p: any) => ({
       ...p,
-      fills: p.fills.map(({ graze, ...f }: any) => ({
+      fills: !Array.isArray(p?.fills) ? p?.fills : p.fills.map(({ graze, ...f }: any) => ({
         ...f,
         pickUpAt: graze?.kind === 'until' && f.time?.kind === 'at' ? graze.until : null,
       })),
@@ -51,5 +51,6 @@ export function migrate(raw: unknown): AppData {
   for (const key of ['cats', 'foods', 'feeders', 'plans'] as const) {
     if (!Array.isArray(d[key])) throw new ImportError(`Not a Neverfed backup: missing ${key}.`);
   }
+  if (!d.plans.every((p: any) => Array.isArray(p?.fills))) throw new ImportError('Not a Neverfed backup: a plan has no fills.');
   return d as AppData;
 }

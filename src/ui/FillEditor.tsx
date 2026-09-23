@@ -178,8 +178,9 @@ export function FillEditor(props: {
                         value={it.foodId ?? ''}
                         onChange={(e) => {
                           const next = data.foods.find((x) => x.id === (e.target as HTMLSelectElement).value);
-                          // Cups and cans don't convert, so a change of form clears the amount.
-                          setItem(i, { foodId: next?.id ?? null, qty: next && food && next.form !== food.form ? null : it.qty });
+                          // Cups and cans don't convert, so clearing the food or changing its form clears the amount.
+                          const keepQty = next && food && next.form === food.form;
+                          setItem(i, { foodId: next?.id ?? null, qty: keepQty ? it.qty : null });
                         }}
                       >
                         <option value="">— choose —</option>
