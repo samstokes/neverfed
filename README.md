@@ -22,6 +22,8 @@ your cats, foods and feeders.
 
 ## Model
 
+The full design spec is in [`docs/spec.md`](docs/spec.md).
+
 - **A fill is the unit, not a time slot.** A fill is one amount of one food put into one
   feeder. If it's left down to graze, that changes the gap and wet-food checks, but its
   calories are still counted once.
