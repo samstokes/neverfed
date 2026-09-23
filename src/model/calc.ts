@@ -114,8 +114,9 @@ export function describeItems(items: ResolvedItem[]): string {
   if (items.length === 0) return 'no food chosen';
   return items
     .map((i) => {
-      const amount = i.food && i.qty !== null ? formatAmount(i.food.form, i.qty) : '?';
-      return `${amount} ${i.food?.name ?? '?'}`;
+      if (!i.food) return 'food not set';
+      if (i.qty === null || !Number.isFinite(i.qty)) return `${i.food.name} (amount not set)`;
+      return `${formatAmount(i.food.form, i.qty)} ${i.food.name}`;
     })
     .join(' + ');
 }

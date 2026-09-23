@@ -46,11 +46,60 @@ export function migrate(raw: unknown): AppData {
   while (d.schemaVersion < SCHEMA_VERSION) {
     const step = migrations[d.schemaVersion];
     if (!step) throw new ImportError(`Don't know how to upgrade schema version ${d.schemaVersion}.`);
-    d = step(d);
+    try {
+      d = step(d);
+    } catch {
+      // Steps assume the previous version's shape; anything else is a malformed backup.
+      throw new ImportError(`Not a Neverfed backup: couldn't upgrade it from schema version ${d.schemaVersion}.`);
+    }
   }
-  for (const key of ['cats', 'foods', 'feeders', 'plans'] as const) {
-    if (!Array.isArray(d[key])) throw new ImportError(`Not a Neverfed backup: missing ${key}.`);
-  }
-  if (!d.plans.every((p: any) => Array.isArray(p?.fills))) throw new ImportError('Not a Neverfed backup: a plan has no fills.');
+  validate(d);
   return d as AppData;
+}
+
+const isObject = (x: unknown): x is Record<string, any> => typeof x === 'object' && x !== null && !Array.isArray(x);
+const isString = (x: unknown): x is string => typeof x === 'string';
+const isNullableNumber = (x: unknown) => x === null || typeof x === 'number';
+const isNullableString = (x: unknown) => x === null || typeof x === 'string';
+
+/**
+ * Checks the shape of everything the app reads, so a malformed backup is
+ * rejected on import rather than crashing a screen later.
+ */
+function validate(d: any): void {
+  const fail = (what: string): never => {
+    throw new ImportError(`Not a Neverfed backup: ${what}.`);
+  };
+  for (const key of ['cats', 'foods', 'feeders', 'plans'] as const) {
+    if (!Array.isArray(d[key])) fail(`missing ${key}`);
+  }
+  for (const c of d.cats) {
+    if (!isObject(c) || !isString(c.id) || !isString(c.name) || !isNullableNumber(c.dailyKcal)) fail('a cat is malformed');
+  }
+  for (const f of d.foods) {
+    if (!isObject(f) || !isString(f.id) || !isString(f.name) || !['dry', 'wet'].includes(f.form) || !isNullableNumber(f.kcalPerUnit)) {
+      fail('a food is malformed');
+    }
+  }
+  for (const f of d.feeders) {
+    if (
+      !isObject(f) || !isString(f.id) || !isString(f.name) || !['microchip', 'auto'].includes(f.kind) ||
+      !Array.isArray(f.catIds) || !Array.isArray(f.accepts) || !isObject(f.share) ||
+      !isNullableString(f.loadedFoodId) || !isNullableNumber(f.portion) || !isNullableNumber(f.hopperCups)
+    ) {
+      fail('a feeder is malformed');
+    }
+  }
+  for (const p of d.plans) {
+    if (!isObject(p) || !isString(p.id) || !Array.isArray(p.fills)) fail('a plan is malformed');
+    for (const f of p.fills) {
+      const t = f?.time;
+      const timeOk = isObject(t) && ((t.kind === 'at' && isString(t.at)) || (t.kind === 'window' && isString(t.from) && isString(t.to)));
+      const itemsOk =
+        Array.isArray(f?.items) && f.items.every((i: any) => isObject(i) && isNullableString(i.foodId) && isNullableNumber(i.qty));
+      if (!isObject(f) || !isString(f.id) || !isString(f.feederId) || !timeOk || !itemsOk || !isNullableString(f.pickUpAt)) {
+        fail(`a fill in plan “${isString(p.name) ? p.name : p.id}” is malformed`);
+      }
+    }
+  }
 }

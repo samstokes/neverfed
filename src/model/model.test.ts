@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attributionFor, summarisePlan, statusFor } from './calc';
+import { attributionFor, describeItems, summarisePlan, statusFor } from './calc';
 import { feedingsPerDay, foodForTrip, hopperRunway, longestGap, wetSittingOut } from './checks';
 import { sitterText } from './sitter';
 import { formatDuration, fromMin } from './time';
@@ -121,6 +121,9 @@ describe('calories', () => {
     const s = summarisePlan(d, { id: 'p', name: 'P', notes: '', fills: [fill('auto', at('09:00'))] });
     expect(s.totals.every((t) => t.kcal === null)).toBe(true);
     expect(s.issues).toContain('auto has no portion size set');
+    expect(describeItems(s.fills[0]!.items)).toBe('Kibble (amount not set)');
+    d.feeders[2]!.loadedFoodId = null;
+    expect(describeItems(summarisePlan(d, { id: 'p', name: 'P', notes: '', fills: [fill('auto', at('09:00'))] }).fills[0]!.items)).toBe('food not set');
   });
 
   it('flags missing targets', () => {

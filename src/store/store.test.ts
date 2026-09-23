@@ -39,10 +39,27 @@ describe('store', () => {
     expect(() => migrate({})).toThrow(ImportError);
     expect(() => migrate({ schemaVersion: 3, cats: [] })).toThrow(/missing foods/);
     expect(() => migrate({ schemaVersion: 1, cats: [] })).toThrow(/missing foods/);
-    // Malformed plans from any version are a clear import error, not a crash.
+    // Malformed data from any version is a clear import error, not a crash.
+    const base = { cats: [], foods: [], feeders: [] };
+    const fill = { id: 'f', feederId: 'm', time: { kind: 'at', at: '08:00' }, items: [], pickUpAt: null, note: '' };
+    const malformed = [
+      { plans: [{ id: 'p' }] },
+      { plans: [null] },
+      { plans: [{ id: 'p', name: 'P', fills: [null] }] },
+      { plans: [{ id: 'p', name: 'P', fills: [{ ...fill, time: null }] }] },
+      { plans: [], cats: [null] },
+      { plans: [], feeders: [{ id: 'x', name: 'X', kind: 'auto' }] },
+    ];
     for (const v of [1, 2, 3]) {
-      expect(() => migrate({ schemaVersion: v, cats: [], foods: [], feeders: [], plans: [{ id: 'p' }] })).toThrow(ImportError);
-      expect(() => migrate({ schemaVersion: v, cats: [], foods: [], feeders: [], plans: [null] })).toThrow(ImportError);
+      for (const bad of malformed) {
+        expect(() => migrate({ schemaVersion: v, ...base, ...bad }), JSON.stringify({ v, bad })).toThrow(ImportError);
+      }
+    }
+    // v1 fills had no items (the upgrade builds them from foodId/qty); from v2 on they're checked.
+    for (const items of [undefined, [null]]) {
+      const bad = { plans: [{ id: 'p', name: 'P', fills: [{ ...fill, items }] }] };
+      expect(() => migrate({ schemaVersion: 2, ...base, ...bad })).toThrow(ImportError);
+      expect(() => migrate({ schemaVersion: 3, ...base, ...bad })).toThrow(ImportError);
     }
     expect(() => migrate({ schemaVersion: 99, cats: [], foods: [], feeders: [], plans: [] })).toThrow(/newer version/);
   });
