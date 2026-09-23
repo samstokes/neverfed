@@ -295,9 +295,8 @@ Decisions made while building the first version, compared with the original spec
    style set.
 3. **No seed data.** The repo is public, so nothing specific to the household is committed.
    §7 is a first-run checklist and §8 is re-entered by hand.
-4. **Stack.** Vite, TypeScript and Preact, with a GitHub Pages workflow. The workflow file
-   is stored at `docs/github-pages-workflow.yml` until it's moved into
-   `.github/workflows/`.
+4. **Stack.** Vite, TypeScript and Preact, with a GitHub Pages workflow in
+   `.github/workflows/deploy.yml`.
 5. **Several foods per fill.** `foodId` and `qty` on a fill became `items`, so wet and dry
    put down together are one fill: one timeline row, one feeding in the count, and one line
    on the sitter sheet ("½ can … + ¼ cup …"). Leaving food down applies to the whole fill,
