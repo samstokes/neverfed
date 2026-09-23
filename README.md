@@ -69,6 +69,10 @@ backups.
 
 ## Deploying
 
-`.github/workflows/deploy.yml` tests and builds on every push and PR, and deploys `main`
-to GitHub Pages. To enable it, go to **Settings → Pages → Source** and choose
-**GitHub Actions**.
+`docs/github-pages-workflow.yml` tests and builds on every push and PR, and deploys `main`
+to GitHub Pages. To install it:
+
+1. Move it to `.github/workflows/deploy.yml`. It lives in `docs/` because the tool that
+   created this repo wasn't allowed to write workflow files.
+   `git mv docs/github-pages-workflow.yml .github/workflows/deploy.yml` then commit and push.
+2. In **Settings → Pages → Source**, choose **GitHub Actions**.
